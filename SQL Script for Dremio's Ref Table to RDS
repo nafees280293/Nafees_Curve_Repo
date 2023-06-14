@@ -1,1 +1,167 @@
+Create Procedure MP2_Curves_Repo_History
+AS 
+	Begin
+--------------------------- insert data into Holiday----------------------------
+
+insert into Holiday (HolidayCode, HolidayDescription,createdBy, createdDate,isActive )
+
+select distinct tbl.* from 
+(
+select distinct nerc_holiday, null as HolidayDescription  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerCAISO
+union all
+select distinct nerc_holiday, null as HolidayDescription  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerERCOT
+union all
+select distinct nerc_holiday, null as HolidayDescription  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerISONE
+union all
+select distinct nerc_holiday, null as HolidayDescription  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerMISO
+union all
+select distinct nerc_holiday, null as HolidayDescription  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerNYISO
+union all
+select distinct nerc_holiday, null as HolidayDescription  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerPJM
+) tbl 
+where tbl.NERC_HOLIDAY is not null
+
+---------------------------------------------------Insert data into Market-----------------------------
+
+insert into Market (MarketCode, MarketDescription, CodeId, createdBy, createdDate, isActive)
+select tbl.* from 
+(
+select distinct iso, null as MarketDescription, null as codeid  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerCAISO
+union all
+select distinct iso, null as MarketDescription, null as codeid  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerERCOT
+union all
+select distinct iso, null as MarketDescription,null as codeid  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerISONE
+union all
+select distinct iso , null as MarketDescription, null as codeid  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerMISO
+union all
+select distinct iso , null as HolidayDescription, null as codeid  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerNYISO
+union all
+select distinct iso, null as HolidayDescription, null as codeid  , null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerPJM
+) tbl
+
+----------------------------------------------- insert into HolidayCalendar------------------------------------------------------------
+
+
+insert into HolidayCalendar (MarketCode, HolidayCode, date,createdBy, createdDate, isActive)
+
+select tbl.* from
+(
+select distinct iso as marketCode, NERC_HOLIDAY as HolidayCode, DY_DAY as [Date]  , 
+null as createdBy,
+GETUTCDATE() as createdDate,1 as isActive
+from powerCAISO 
+where NERC_HOLIDAY is not null
+
+union all
+
+select distinct iso as marketCode, NERC_HOLIDAY as HolidayCode, DY_DAY as [Date]  , 
+null as createdBy,
+GETUTCDATE() as createdDate,1 as isActive
+from powerERCOT 
+where NERC_HOLIDAY is not null
+
+union all
+
+select distinct iso as marketCode, NERC_HOLIDAY as HolidayCode, DY_DAY as [Date]  , 
+null as createdBy,
+GETUTCDATE() as createdDate,1 as isActive
+from powerISONE 
+where NERC_HOLIDAY is not null
+
+union all
+
+select distinct iso as marketCode, NERC_HOLIDAY as HolidayCode, DY_DAY as [Date]  , 
+null as createdBy,
+GETUTCDATE() as createdDate,1 as isActive
+from powerMISO
+where NERC_HOLIDAY is not null
+
+union all
+
+select distinct iso as marketCode, NERC_HOLIDAY as HolidayCode, DY_DAY as [Date]  , 
+null as createdBy,
+GETUTCDATE() as createdDate,1 as isActive
+from powerNYISO
+where NERC_HOLIDAY is not null
+
+union all
+
+select distinct iso as marketCode, NERC_HOLIDAY as HolidayCode, DY_DAY as [Date]  , 
+null as createdBy,
+GETUTCDATE() as createdDate,1 as isActive
+from powerPJM
+where NERC_HOLIDAY is not null
+)tbl
+
+--------------------------- insert into daytype---------------------
+
+insert into DayType(DayTypeCode, DayTypeDescription, createdBy, createdDate, isActive)
+select  distinct tbl.* from 
+(
+select distinct DAY_TYPE as DayTypeCode, null as DayTypeDescription,  null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerCAISO
+union all
+select distinct DAY_TYPE as DayTypeCode, null as DayTypeDescription,  null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerERCOT
+union all
+select distinct DAY_TYPE as DayTypeCode, null as DayTypeDescription,  null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerISONE
+union all
+select distinct DAY_TYPE as DayTypeCode, null as DayTypeDescription,  null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerMISO
+union all
+select distinct DAY_TYPE as DayTypeCode, null as DayTypeDescription,  null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerNYISO
+union all
+select distinct DAY_TYPE as DayTypeCode, null as DayTypeDescription,  null as createdBy,GETUTCDATE() as createdDate,1 as isActive from powerPJM
+) tbl
+
+------------------------------------------ insert into TradingHours-------------------------------------------------------------
+
+insert into TradingHours
+
+select tbl.* from 
+(
+select   ISO as MarketCode, null as HolidayCalendarId, DY_DAY as [Date],DY_MONTH, He as HourEnding,
+DAY_TYPE as DayTypeCode,PEAK_TYPE as PeakTypeCode,BLOCK_TYPE as BlockTypeCode, 0 as IsDayLightSaving, 
+null as createdBy, GETUTCDATE() as CreatedDate, 1 as IsActive
+from  powerCAISO 
+
+union all
+
+select ISO as MarketCode, null as HolidayCalendarId, DY_DAY as [Date],DY_MONTH, He as HourEnding,
+DAY_TYPE as DayTypeCode,PEAK_TYPE as PeakTypeCode,BLOCK_TYPE as BlockTypeCode, 0 as IsDayLightSaving, 
+null as createdBy, GETUTCDATE() as CreatedDate, 1 as IsActive
+from  powerERCOT 
+
+union all
+
+select ISO as MarketCode, null as HolidayCalendarId, DY_DAY as [Date],DY_MONTH, He as HourEnding,
+DAY_TYPE as DayTypeCode,PEAK_TYPE as PeakTypeCode,BLOCK_TYPE as BlockTypeCode, 0 as IsDayLightSaving, 
+null as createdBy, GETUTCDATE() as CreatedDate, 1 as IsActive
+from  powerISONE 
+
+union all
+
+select ISO as MarketCode, null as HolidayCalendarId, DY_DAY as [Date],DY_MONTH, He as HourEnding,
+DAY_TYPE as DayTypeCode,PEAK_TYPE as PeakTypeCode,BLOCK_TYPE as BlockTypeCode, 0 as IsDayLightSaving, 
+null as createdBy, GETUTCDATE() as CreatedDate, 1 as IsActive
+from  powerMISO 
+
+union all
+
+select ISO as MarketCode, null as HolidayCalendarId, DY_DAY as [Date],DY_MONTH, He as HourEnding,
+DAY_TYPE as DayTypeCode,PEAK_TYPE as PeakTypeCode,BLOCK_TYPE as BlockTypeCode, 0 as IsDayLightSaving, 
+null as createdBy, GETUTCDATE() as CreatedDate, 1 as IsActive
+from  powerNYISO 
+
+union all
+select ISO as MarketCode, null as HolidayCalendarId, DY_DAY as [Date],DY_MONTH, He as HourEnding,
+DAY_TYPE as DayTypeCode,PEAK_TYPE as PeakTypeCode,BLOCK_TYPE as BlockTypeCode, 0 as IsDayLightSaving, 
+null as createdBy, GETUTCDATE() as CreatedDate, 1 as IsActive
+from  powerPJM
+
+) tbl
+
+
+
+END 
+
+
+
 
