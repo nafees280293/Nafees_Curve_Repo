@@ -1,1 +1,103 @@
+from datetime import datetime, timedelta
+from airflow.utils.dates import days_ago
+from airflow.decorators import dag, task
+from MP2360Tools.MP2360Tools.utils import logz
+import xml.etree.ElementTree as ET
+import boto3
+import csv
+import pyodbc
+
+logger = logz.create_logger()
+
+yest_date = datetime.now().date() + timedelta(days=-1)
+result = yest_date.strftime('%m%d%Y')
+
+s3 = boto3.client('s3')
+server = 'curves-dev.c3nmnzcia5f7.us-east-1.rds.amazonaws.com'
+database = 'Curves'
+username = 'curves'
+password = 'b:!R1IF2Pt7o)#C:h?KvgXEp:)[8'
+conn_str = f'DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+
+args = {
+    "owner": "Nafees",
+    "start_date": days_ago(1),
+    "retries": 3,
+    "retry_delay": timedelta(minutes=10),
+    "on_failure": ""
+}
+
+@dag(
+    dag_id="Sena_Hourly_Curve_Data",
+    schedule_interval=timedelta(days=1),
+    tags=["Pulling Sena data from S3 to RDS"],
+    default_args=args,
+    catchup=False
+)
+def callInsertion():
+    @task
+    def insertHourlyData():
+        obj = s3.get_object(Bucket='curves-devenv', Key=f'CurvesData/Hourly_{result}.csv')
+        data = obj['Body'].read().decode('utf-8').splitlines()
+        records = csv.reader(data)
+        headers = next(records)
+
+        xml = "<root>"
+        for eachRecord in records:
+            xml += "<row>"
+            xml += "<MpSettleDate>" + eachRecord[0] + "</MpSettleDate>"
+            xml += "<MpppepppPool>" + eachRecord[1] + "</MpppepppPool>"
+            xml += "<MpppepppProduct>" + eachRecord[2] + "</MpppepppProduct>"
+            xml += "<MpCmContractMonth>" + eachRecord[3] + "</MpCmContractMonth>"
+            xml += "<DyBegDay>" + eachRecord[4] + "</DyBegDay>"
+            xml += "<DyEndDay>" + eachRecord[5] + "</DyEndDay>"
+            xml += "<HoBegHour>" + eachRecord[6] + "</HoBegHour>"
+            xml += "<HoEndHour>" + eachRecord[7] + "</HoEndHour>"
+            xml += "<Price>" + eachRecord[8] + "</Price>"
+            xml += "<Mp2CurveName>" + eachRecord[9] + "</Mp2CurveName>"
+            xml += "</row>"
+        xml += "</root>"
+
+        # Create an XML element tree from the XML string
+        root = ET.fromstring(xml)
+
+        # Create a list of tuples to hold the data
+        data_list = []
+        for row in root.findall('row'):
+            data_tuple = (
+                row.find('MpSettleDate').text,
+                row.find('MpppepppPool').text,
+                row.find('MpppepppProduct').text,
+                int(row.find('MpCmContractMonth').text),
+                row.find('DyBegDay').text,
+                row.find('DyEndDay').text,
+                int(row.find('HoBegHour').text),
+                int(row.find('HoEndHour').text),
+                float(row.find('Price').text),
+                row.find('Mp2CurveName').text
+            )
+            data_list.append(data_tuple)
+
+        # Establish a connection to the SQL Server
+        conn = pyodbc.connect(conn_str)
+        cursor = conn.cursor()
+
+        # Truncate the table
+        truncate_query = "TRUNCATE TABLE Hourly_Shell_Curve_StageCurrent"
+        cursor.execute(truncate_query)
+        conn.commit()
+
+        # Prepare the SQL statement for bulk insert
+        insert_query = "INSERT INTO Hourly_Shell_Curve_StageCurrent (MP_SETTLE_DATE, MP_PPEP_PP_POOL, MP_PPEP_PEP_PRODUCT, MP_CM_CONTRACT_MONTH, DY_BEG_DAY, DY_END_DAY, HO_BEG_HOUR, HO_END_HOUR, PRICE, MP2_Curve_Name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+
+        # Execute the bulk insert query using executemany
+        cursor.executemany(insert_query, data_list)
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+    insertHourlyData()
+
+callInsertion = callInsertion()
 
